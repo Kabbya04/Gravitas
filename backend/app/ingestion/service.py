@@ -117,3 +117,18 @@ def delete_document_files(doc: Document) -> None:
     folder = Path(doc.storage_path).parent
     if folder.exists():
         shutil.rmtree(folder, ignore_errors=True)
+
+
+def purge_document(db: Session, document_id: str) -> bool:
+    """Remove document row (cascades chunks/drafts), on-disk files, and Chroma vectors."""
+    doc = db.get(Document, document_id)
+    if not doc:
+        return False
+    y = get_yaml_config()
+    s = get_settings()
+    chroma = ChromaIndex(chroma_dir(y))
+    chroma.delete_document(document_id)
+    delete_document_files(doc)
+    db.delete(doc)
+    db.commit()
+    return True

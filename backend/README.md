@@ -36,13 +36,27 @@ cd backend
 pytest
 ```
 
+## HTTP surface (summary)
+
+| Method | Path | Role |
+|--------|------|------|
+| `POST` | `/api/documents` | Multipart upload |
+| `GET` | `/api/documents`, `/api/documents/{id}`, `/api/documents/{id}/chunks` | List / detail / chunks |
+| `DELETE` | `/api/documents/{id}` | Purge DB row, files, Chroma vectors |
+| `POST` | `/api/documents/{id}/draft` | Create draft (Groq + persist) |
+| `GET` | `/api/documents/{id}/drafts` | List draft metadata |
+| `GET` | `/api/drafts/{draft_id}` | Load one draft |
+| `POST` | `/api/drafts/{draft_id}/operator` | Save operator text + mine edits |
+
+Routers live under `app/api/routers/`. See the root [README.md](../README.md) for the full product picture.
+
 ## Layout
 
 - `app/main.py` — FastAPI app and CORS
 - `app/api/routers/` — HTTP routes
 - `app/core/` — env settings, YAML config, prompt loading
 - `app/db/` — SQLAlchemy models + SQLite session
-- `app/ingestion/` — extract, chunk, ingest service
+- `app/ingestion/` — extract, chunk, ingest service, document purge on delete
 - `app/rag/` — embedder, Chroma, BM25, hybrid retrieval
 - `app/llm/` — Groq client, citation helpers
 - `app/learning/` — operator edit capture + memory block

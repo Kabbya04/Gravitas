@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Response, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.db.models import Chunk, Document
-from app.ingestion.service import create_document_record, process_document
+from app.ingestion.service import create_document_record, process_document, purge_document
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -71,6 +71,13 @@ def get_document(document_id: str, db: Session = Depends(get_db)) -> Any:
     if not doc:
         raise HTTPException(status_code=404, detail="not found")
     return DocumentSummary(id=doc.id, filename=doc.filename, status=doc.status, error_message=doc.error_message)
+
+
+@router.delete("/{document_id}", status_code=204)
+def delete_document(document_id: str, db: Session = Depends(get_db)) -> Response:
+    if not purge_document(db, document_id):
+        raise HTTPException(status_code=404, detail="not found")
+    return Response(status_code=204)
 
 
 @router.get("/{document_id}/chunks", response_model=list[ChunkOut])
