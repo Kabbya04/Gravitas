@@ -1,0 +1,39 @@
+# Tunable inputs (non-secret). Secrets live in .env — see .env.example.
+
+app:
+  name: gravitas-api
+  cors_origins:
+    - "http://127.0.0.1:5173"
+    - "http://localhost:5173"
+
+paths:
+  chroma_dir: chroma_data
+  sqlite_filename: gravitas.sqlite3
+
+groq:
+  base_url: "https://api.groq.com/openai/v1"
+  model: "openai/gpt-oss-120b"
+  temperature: 0.2
+  max_tokens: 4096
+
+embedding:
+  model: "sentence-transformers/all-MiniLM-L6-v2"
+
+chunking:
+  max_chars: 1200
+  overlap_chars: 150
+  ocr_text_threshold: 40
+
+retrieval:
+  dense_top_k: 12
+  bm25_top_k: 12
+  fusion_k: 60
+  max_context_chunks: 10
+  max_chars_per_evidence: 900
+
+learning:
+  memory_top_k: 4
+  max_memory_chars: 2000
+
+prompts:
+  drafting_file: prompts/drafting.yaml

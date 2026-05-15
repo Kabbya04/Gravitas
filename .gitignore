@@ -1,0 +1,14 @@
+.env
+*.pyc
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+node_modules/
+dist/
+backend/data/
+backend/chroma_data/
+*.sqlite3
+.DS_Store

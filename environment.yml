@@ -1,0 +1,12 @@
+# Conda environment: Python 3.11, name `gravitas`.
+# Create/update: `conda env create -f environment.yml` OR `conda env update -f environment.yml --prune`
+# Activate: `conda activate gravitas`
+name: gravitas
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - -r backend/requirements.txt

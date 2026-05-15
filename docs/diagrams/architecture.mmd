@@ -1,0 +1,47 @@
+flowchart LR
+  subgraph ingest [Ingestion]
+    Upload[Upload API]
+    Router[Format router]
+    Native[Native text extraction]
+    OCR[Tesseract OCR]
+    MD[MarkItDown optional]
+    Chunk[Chunk plus structure]
+  end
+  subgraph store [Storage]
+    DB[(SQLite plus files)]
+    Vec[(Chroma vector store)]
+    Lex[BM25 lexical index]
+  end
+  subgraph retrieve [Retrieval]
+    Hybrid[Hybrid retrieve and fuse]
+    Pack[Evidence packaging]
+  end
+  subgraph gen [Generation]
+    Groq[Groq OpenAI-compatible API]
+    Parse[Citation parse and validate]
+  end
+  subgraph learn [Edit loop]
+    Capture[Capture operator final]
+    Mine[Mine edit patterns]
+    Mem[Preference memory]
+  end
+  Upload --> Router
+  Router --> Native
+  Router --> OCR
+  Router --> MD
+  Native --> Chunk
+  OCR --> Chunk
+  MD --> Chunk
+  Chunk --> DB
+  Chunk --> Vec
+  Chunk --> Lex
+  Vec --> Hybrid
+  Lex --> Hybrid
+  DB --> Hybrid
+  Hybrid --> Pack
+  Pack --> Groq
+  Groq --> Parse
+  Parse --> Capture
+  Capture --> Mine
+  Mine --> Mem
+  Mem --> Pack

@@ -1,0 +1,44 @@
+flowchart LR
+  subgraph ragLoad [Stages 1 to 2]
+    S1[Load]
+    S2[Parse extract]
+  end
+  subgraph ragChunk [Stages 3 to 4]
+    S3[Chunk]
+    S4[(SQLite persist)]
+  end
+  subgraph ragIndex [Stages 5 to 7]
+    S5[Embed chunks]
+    S6[(Chroma upsert)]
+    S7[BM25 corpus]
+  end
+  subgraph ragRetrieve [Stages 8 to 11]
+    S8[Query encoding]
+    S9[Dense top-k]
+    S10[Lexical top-k]
+    S11[RRF fusion]
+    S12[Context E1 to En]
+    S13[Memory inject]
+  end
+  subgraph ragGen [Stages 12 to 13]
+    S14[Groq generate]
+    S15[Citation parse validate]
+    S16[Optional repair]
+  end
+  S1 --> S2
+  S2 --> S3
+  S3 --> S4
+  S3 --> S5
+  S5 --> S6
+  S4 --> S7
+  S8 --> S9
+  S8 --> S10
+  S6 --> S9
+  S7 --> S10
+  S9 --> S11
+  S10 --> S11
+  S13 --> S12
+  S11 --> S12
+  S12 --> S14
+  S14 --> S15
+  S15 --> S16
