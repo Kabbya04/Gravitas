@@ -5,3 +5,4 @@
 - **BM25 rebuilt per retrieval** keeps code simple and avoids stale indexes when chunks change; for very large corpora you would persist an incremental lexical index.
 - **Edit memory** uses coarse line-block diffs and embedding similarity — not a full fine-tuning loop — but provides a concrete, inspectable improvement signal aligned with the rubric.
 - **Secrets** never leave the backend; the browser only talks to FastAPI.
+- **Document delete** is immediate and irreversible for that id: SQLite cascades remove chunks and drafts; uploaded files and Chroma vectors for the document are removed in the same request. There is no soft-delete or trash bucket in v1.

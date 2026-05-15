@@ -1,11 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listDocuments, uploadDocument, type DocumentSummary } from "@/lib/api";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import {
+  deleteDocument,
+  listDocuments,
+  uploadDocument,
+  type DocumentSummary,
+} from "@/lib/api";
 
 export function HomePage() {
   const [docs, setDocs] = useState<DocumentSummary[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<DocumentSummary | null>(
+    null,
+  );
 
   const refresh = useCallback(() => {
     setErr(null);
@@ -36,8 +46,49 @@ export function HomePage() {
     }
   };
 
+  const executeDelete = async () => {
+    const d = pendingDelete;
+    if (!d) return;
+    setDeletingId(d.id);
+    setErr(null);
+    try {
+      await deleteDocument(d.id);
+      setPendingDelete(null);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Delete failed");
+      setPendingDelete(null);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-8">
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title="Delete this document?"
+        description={
+          pendingDelete ? (
+            <>
+              <span className="font-medium text-zinc-900">
+                &ldquo;{pendingDelete.filename}&rdquo;
+              </span>{" "}
+              will be removed permanently, including stored drafts and the
+              search index. This cannot be undone.
+            </>
+          ) : null
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        pending={deletingId !== null}
+        onClose={() => {
+          if (deletingId !== null) return;
+          setPendingDelete(null);
+        }}
+        onConfirm={() => void executeDelete()}
+      />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
           Documents
@@ -78,7 +129,7 @@ export function HomePage() {
             <tr>
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3" />
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
@@ -107,12 +158,22 @@ export function HomePage() {
                   ) : null}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <Link
-                    className="font-medium text-zinc-900 underline-offset-2 hover:underline"
-                    to={`/documents/${d.id}`}
-                  >
-                    Open
-                  </Link>
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Link
+                      className="font-medium text-zinc-900 underline-offset-2 hover:underline"
+                      to={`/documents/${d.id}`}
+                    >
+                      Open
+                    </Link>
+                    <button
+                      type="button"
+                      disabled={deletingId !== null || busy}
+                      onClick={() => setPendingDelete(d)}
+                      className="font-medium text-red-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {deletingId === d.id ? "Deleting…" : "Delete"}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

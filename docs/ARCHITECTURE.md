@@ -8,24 +8,26 @@ The service ingests **noisy legal-style** files (PDFs, scans, office formats), t
 
 ## High-level system architecture
 
-![High-level system architecture](diagrams/architecture.svg)
+![High-level system architecture for Gravitas](diagrams/architecture.svg)
+
+Source (edit and regenerate SVG as needed): [diagrams/architecture.mmd](diagrams/architecture.mmd). From `docs/diagrams/`, e.g. `npx --yes @mermaid-js/mermaid-cli@11.4.0 -i architecture.mmd -o architecture.svg -w 2200 -H 950 -s 1 -b white -q`.
 
 **Groq:** OpenAI-compatible client with `base_url=https://api.groq.com/openai/v1` and `GROQ_API_KEY` ([Groq overview](https://console.groq.com/docs/overview)); the browser never sees API keys. Model id defaults in `config.yaml` and can be overridden with `GROQ_MODEL` in `.env`.
 
-**Reading the diagram:** uploads are normalized and chunked once; **SQLite** holds canonical text and metadata; **Chroma** holds dense vectors for semantic search; **BM25** answers keyword-heavy queries. At draft time, **Hybrid** combines both signals, **Pack** turns the fused set into labeled evidence for the LLM, and **Parse** enforces grounding. **Mine** / **Mem** implement the operator-improvement loop by injecting a short “preferences” block into **Pack** on subsequent runs.
+**Reading the diagram:** **POST upload** flows through ingestion into **SQLite** (canonical text and files), **Chroma** (dense vectors), and **BM25** corpus texts. **DELETE document** tears down the same stores for that id (plus cascaded SQL rows) without going through the ingest path. At draft time, **Hybrid** / **Pack** / **Groq** / **Parse** and the **Mine** → **Mem** loop feeding back into **Pack** behave as before.
 
 ## Major components
 
 | Layer | Role | Primary code |
 |--------|------|----------------|
-| **API** | HTTP routes, multipart upload, draft and operator-save endpoints. | [`backend/app/main.py`](../backend/app/main.py), [`backend/app/api/routers/`](../backend/app/api/routers/) |
+| **API** | HTTP routes: multipart upload, document CRUD (including **delete**), chunk listing, draft create/list/get, operator-save. | [`backend/app/main.py`](../backend/app/main.py), [`backend/app/api/routers/`](../backend/app/api/routers/) |
 | **Core config** | `.env` secrets, `config.yaml` tunables, Jinja-rendered prompts from YAML files. | [`backend/app/core/`](../backend/app/core/), [`backend/config.yaml`](../backend/config.yaml), [`backend/prompts/drafting.yaml`](../backend/prompts/drafting.yaml) |
 | **Persistence** | SQLAlchemy models and SQLite session; files under `backend/data/`. | [`backend/app/db/`](../backend/app/db/) |
-| **Ingestion** | Format routing, PDF native vs OCR, optional MarkItDown, chunking with overlap. | [`backend/app/ingestion/`](../backend/app/ingestion/) |
+| **Ingestion** | Format routing, PDF native vs OCR, optional MarkItDown, chunking with overlap; **`purge_document`** for full teardown on delete. | [`backend/app/ingestion/`](../backend/app/ingestion/) |
 | **RAG** | Embeddings, Chroma client, BM25 over in-memory tokenized corpus, RRF fusion, evidence packing. | [`backend/app/rag/`](../backend/app/rag/) |
 | **LLM** | Groq via OpenAI-compatible client, JSON draft shape, citation validation and optional repair. | [`backend/app/llm/`](../backend/app/llm/) |
 | **Learning** | Diff-based correction snippets, embeddings for memory retrieval, prompt injection. | [`backend/app/learning/edits.py`](../backend/app/learning/edits.py) |
-| **Frontend** | React + Vite + TypeScript + Tailwind; upload, chunk view, evidence panel, editable draft. | [`frontend/src/`](../frontend/src/) |
+| **Frontend** | React + Vite + TypeScript + Tailwind; upload, **delete** (modal confirm), chunk view, **saved drafts** list + reload, editable draft, evidence panel, operator save. | [`frontend/src/`](../frontend/src/) |
 
 ## End-to-end data flow (narrative)
 
@@ -35,7 +37,8 @@ The service ingests **noisy legal-style** files (PDFs, scans, office formats), t
 4. When the user requests a **draft**, the backend **embeds the query**, runs **dense retrieval** (Chroma) and **lexical retrieval** (BM25 rebuilt from chunks for that document), **fuses** rankings with **reciprocal rank fusion** (`backend/app/rag/fusion.py`), trims to a token budget, and labels passages **E1…En**.
 5. Optionally, **operator memory** (short text from past corrections similar to the current query) is prepended to the user prompt.
 6. **Groq** returns JSON matching the case-fact schema; the service **validates citations** against the evidence set and may run a **single repair** completion if tags are invalid.
-7. The draft and evidence list are **persisted**; operator saves run **diff mining** and store correction rows for future **memory** retrieval.
+7. The draft and evidence list are **persisted**; the UI can **list** and **re-open** past drafts per document. Operator saves run **diff mining** and store correction rows for future **memory** retrieval.
+8. **`DELETE /api/documents/{id}`** removes the **Document** row (SQLAlchemy cascades chunks and drafts), deletes the upload directory on disk, and drops matching vectors in **Chroma** so nothing is orphaned.
 
 ## RAG pipeline
 
@@ -62,13 +65,11 @@ The service ingests **noisy legal-style** files (PDFs, scans, office formats), t
 
 ### RAG pipeline diagram
 
-The plan defines the RAG stages as a **numbered list** (stages 1–13); the figure below uses the **same diagram language as the plan’s high-level architecture** (`flowchart LR`, `subgraph` groupings, `Label[text]` nodes, solid `-->` edges). It maps those stages onto indexing, hybrid retrieval, evidence packaging, optional memory, and generation/validation.
+The plan’s **13** RAG stages are drawn below as a **top-to-bottom** `flowchart TB` (easier to read at large type than a single wide row). Source: [diagrams/rag-pipeline.mmd](diagrams/rag-pipeline.mmd). From `docs/diagrams/`, regenerate the SVG with e.g. `npx --yes @mermaid-js/mermaid-cli@11.4.0 -i rag-pipeline.mmd -o rag-pipeline.svg -w 960 -H 1800 -s 1.45 -b white -q` (adjust viewport flags if labels clip).
 
-**Preview:** rendered as SVG (see [diagrams/rag-pipeline.mmd](diagrams/rag-pipeline.mmd)).
+![RAG pipeline: stages 1 through 13](diagrams/rag-pipeline.svg)
 
-![RAG pipeline](diagrams/rag-pipeline.svg)
-
-Stages **8–11** correspond to query encoding, parallel dense and lexical retrieval, RRF fusion and deduplication, context packing with evidence labels, and the optional **operator memory** block merged into the prompt before **Groq** (stage **12**). Stage **13** is citation validation and an optional **repair** completion if tags are invalid.
+**Stages 1–7 (indexing):** load → parse/extract → chunk → persist SQLite → embed → Chroma upsert → BM25 token corpus from chunk texts. **Stages 8–13 (each draft request):** **8** query embedding; **9** hybrid dense + lexical retrieval scoped to the document; **10** RRF fusion; **11** context packing with **E** labels plus optional **operator memory**; **12** Groq generation; **13** citation validation and optional **repair**.
 
 ## Design choices (short)
 

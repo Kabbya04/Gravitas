@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   citationsUsedFromResponse,
   createDraft,
+  deleteDocument,
   draftTextFromResponse,
   getDocument,
   getDocumentChunks,
@@ -67,6 +69,7 @@ function queryPreview(q: string, max = 72): string {
 
 export function DocumentDetailPage() {
   const { id: rawId } = useParams();
+  const navigate = useNavigate();
   const id = rawId ?? "";
 
   const [doc, setDoc] = useState<DocumentSummary | null>(null);
@@ -91,6 +94,9 @@ export function DocumentDetailPage() {
   const [draftListLoading, setDraftListLoading] = useState(false);
   const [draftListErr, setDraftListErr] = useState<string | null>(null);
   const [openDraftBusyId, setOpenDraftBusyId] = useState<string | null>(null);
+
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const [draftBody, setDraftBody] = useState("");
 
@@ -249,6 +255,22 @@ export function DocumentDetailPage() {
     }
   };
 
+  const runDeleteDocument = async () => {
+    if (!id) return;
+    setDeleteBusy(true);
+    setDocErr(null);
+    try {
+      await deleteDocument(id);
+      setDeleteDialogOpen(false);
+      navigate("/", { replace: true });
+    } catch (e) {
+      setDocErr(e instanceof Error ? e.message : "Delete failed");
+      setDeleteDialogOpen(false);
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   if (!id) {
     return (
       <p className="text-sm text-zinc-600">
@@ -265,8 +287,29 @@ export function DocumentDetailPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="Delete this document?"
+        description={
+          <>
+            <span className="font-medium text-zinc-900">
+              &ldquo;{docTitle}&rdquo;
+            </span>{" "}
+            will be removed permanently, including stored drafts, uploaded files,
+            and the search index. This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        pending={deleteBusy}
+        onClose={() => {
+          if (!deleteBusy) setDeleteDialogOpen(false);
+        }}
+        onConfirm={() => void runDeleteDocument()}
+      />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
           <Link
             to="/"
             className="text-xs font-medium text-zinc-500 hover:text-zinc-800"
@@ -291,6 +334,14 @@ export function DocumentDetailPage() {
             </p>
           )}
         </div>
+        <button
+          type="button"
+          disabled={deleteBusy}
+          onClick={() => setDeleteDialogOpen(true)}
+          className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-800 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {deleteBusy ? "Deleting…" : "Delete document"}
+        </button>
       </div>
 
       <section className="rounded-xl border border-zinc-200 bg-white shadow-sm">

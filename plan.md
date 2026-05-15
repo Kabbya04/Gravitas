@@ -65,3 +65,5 @@ Operator-edit **memory** injects into step 11 as an extra prompt block (retrieve
 4. Groq drafting + persistence.
 5. Frontend (Vite React Tailwind) wired via env `VITE_API_URL`.
 6. Edit loop + docs/samples + `pytest` in Conda env `gravitas` (Python 3.11).
+
+**Also shipped in the UI/API:** document **delete** (`DELETE /api/documents/{id}`) with Chroma + filesystem cleanup; **list/load saved drafts** per document; in-app **`ConfirmDialog`** for destructive confirmation; editable draft textarea aligned with operator save.

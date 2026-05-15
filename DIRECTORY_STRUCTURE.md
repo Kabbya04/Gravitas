@@ -18,7 +18,6 @@ gravitas/
 │   ├── ASSUMPTIONS.md
 │   ├── EVALUATION.md
 │   └── diagrams/
-│       ├── README.md
 │       ├── architecture.mmd
 │       ├── architecture.svg
 │       ├── rag-pipeline.mmd
@@ -88,7 +87,8 @@ gravitas/
         ├── lib/
         │   └── api.ts
         ├── components/
-        │   └── Layout.tsx
+        │   ├── Layout.tsx
+        │   └── ConfirmDialog.tsx
         └── pages/
             ├── HomePage.tsx
             └── DocumentDetailPage.tsx
@@ -101,18 +101,18 @@ gravitas/
 | [`backend/app/api/`](backend/app/api/) | HTTP layer: route modules and shared API wiring. |
 | [`backend/app/core/`](backend/app/core/) | Settings (`.env`), YAML config, prompt template loading. |
 | [`backend/app/db/`](backend/app/db/) | SQLAlchemy models and SQLite session factory. |
-| [`backend/app/ingestion/`](backend/app/ingestion/) | Extract text (PDF/OCR/MarkItDown), chunk, persist to DB + vectors. |
+| [`backend/app/ingestion/`](backend/app/ingestion/) | Extract text (PDF/OCR/MarkItDown), chunk, persist to DB + vectors; **`purge_document`** removes files + Chroma + DB row for deletes. |
 | [`backend/app/rag/`](backend/app/rag/) | Embeddings, Chroma, BM25, RRF fusion helper, hybrid retrieval + evidence packing. |
 | [`backend/app/llm/`](backend/app/llm/) | Groq client, JSON draft parsing, citation validation helpers. |
 | [`backend/app/learning/`](backend/app/learning/) | Operator diff mining and memory block for future prompts. |
 | [`backend/prompts/`](backend/prompts/) | Externalized LLM prompt YAML (Jinja2); not hardcoded in Python. |
 | [`backend/tests/`](backend/tests/) | `pytest` unit tests for stable helpers (no API keys required). |
-| [`frontend/`](frontend/) | React + Vite + TypeScript + Tailwind UI for upload, chunks, drafting, edits. |
-| [`frontend/src/`](frontend/src/) | App entry, pages, shared components, API client. |
+| [`frontend/`](frontend/) | React + Vite + TypeScript + Tailwind UI: upload, delete (with modal confirm), chunk view, **saved drafts**, drafting, evidence, operator save. |
+| [`frontend/src/`](frontend/src/) | App entry, pages (`HomePage`, `DocumentDetailPage`), shared layout, **reusable confirm dialog**, typed API client. |
 | [`docs/`](docs/) | Architecture, assumptions, evaluation notes for reviewers. |
 | [`docs/diagrams/`](docs/diagrams/) | Mermaid sources (`.mmd`) and rendered **SVG** diagrams for `ARCHITECTURE.md` previews. |
 | [`samples/`](samples/) | Placeholder / future sample inputs and expected outputs for the assessment. |
-| [`.cursor/`](.cursor/) | Cursor IDE metadata (plans, etc.); not required at runtime. |
+| [`.cursor/`](.cursor/) | Cursor IDE metadata (plans, etc.); not required at runtime. **Gitignored** in this repo — do not commit. |
 | [`plan.md`](plan.md) | High-level product / assessment plan (living reference). |
 | [`environment.yml`](environment.yml) | Conda env `gravitas` (Python 3.11) + pip install from `backend/requirements.txt`. |
 

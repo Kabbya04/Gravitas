@@ -1,27 +1,31 @@
+%%{init: {'themeVariables': {'fontSize': '24px', 'fontFamily': 'ui-sans-serif, system-ui, sans-serif'}}}%%
 flowchart LR
+  subgraph api [HTTP API]
+    Upload[POST upload]
+    Delete[DELETE document]
+  end
   subgraph ingest [Ingestion]
-    Upload[Upload API]
     Router[Format router]
-    Native[Native text extraction]
+    Native[Native PDF text]
     OCR[Tesseract OCR]
     MD[MarkItDown optional]
     Chunk[Chunk plus structure]
   end
   subgraph store [Storage]
     DB[(SQLite plus files)]
-    Vec[(Chroma vector store)]
-    Lex[BM25 lexical index]
+    Vec[(Chroma vectors)]
+    Lex[BM25 corpus texts]
   end
   subgraph retrieve [Retrieval]
     Hybrid[Hybrid retrieve and fuse]
     Pack[Evidence packaging]
   end
   subgraph gen [Generation]
-    Groq[Groq OpenAI-compatible API]
-    Parse[Citation parse and validate]
+    Groq[Groq API]
+    Parse[Citation parse validate]
   end
   subgraph learn [Edit loop]
-    Capture[Capture operator final]
+    Capture[Operator final text]
     Mine[Mine edit patterns]
     Mem[Preference memory]
   end
@@ -45,3 +49,5 @@ flowchart LR
   Capture --> Mine
   Mine --> Mem
   Mem --> Pack
+  Delete --> DB
+  Delete --> Vec

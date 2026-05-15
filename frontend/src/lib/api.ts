@@ -44,6 +44,29 @@ export async function apiGet<T>(path: string): Promise<T> {
   return parseJson<T>(res);
 }
 
+export async function apiDelete(path: string): Promise<void> {
+  const res = await fetch(`${getBaseUrl()}${path}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    let detail = text;
+    try {
+      const body = JSON.parse(text) as { detail?: unknown };
+      if (body?.detail !== undefined) {
+        detail =
+          typeof body.detail === "string"
+            ? body.detail
+            : JSON.stringify(body.detail);
+      }
+    } catch {
+      /* keep raw */
+    }
+    throw new Error(detail || `Request failed (${res.status})`);
+  }
+}
+
 export async function apiPostJson<T, B extends object>(
   path: string,
   body: B,
@@ -155,6 +178,10 @@ export function uploadDocument(file: File): Promise<DocumentSummary> {
 
 export function getDocument(id: string): Promise<DocumentSummary> {
   return apiGet<DocumentSummary>(`/api/documents/${encodeURIComponent(id)}`);
+}
+
+export function deleteDocument(id: string): Promise<void> {
+  return apiDelete(`/api/documents/${encodeURIComponent(id)}`);
 }
 
 export function getDocumentChunks(id: string): Promise<DocumentChunk[]> {

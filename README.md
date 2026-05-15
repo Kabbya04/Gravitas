@@ -61,6 +61,12 @@ npm run dev
 
 Vite proxies `/api` and `/health` to `http://127.0.0.1:8000` during development. Optional: set `VITE_API_URL` in `frontend/.env` (see `frontend/.env.example`).
 
+### Web app (what you get in the UI)
+
+- **Documents** — Upload files, see processing status, **open** a document, or **delete** it. Delete uses an in-app confirmation modal (not the browser `confirm` dialog).
+- **Document workspace** — After **ready**: chunk table, **saved drafts** list (every **Generate** creates a server-side draft; **Open** reloads text + evidence), drafting query with optional **Use memory**, editable draft textarea, evidence column, **Save operator version**.
+- **Delete document** — Available from the list and from the document header; removes SQLite rows (cascading chunks and drafts), Chroma vectors for that id, and files under `backend/data/files/<id>/`.
+
 ## Configuration
 
 | Location | Purpose |
@@ -75,10 +81,13 @@ Vite proxies `/api` and `/health` to `http://127.0.0.1:8000` during development.
 
 - `POST /api/documents` — multipart upload; processing runs in background.
 - `GET /api/documents`, `GET /api/documents/{id}`, `GET /api/documents/{id}/chunks`
-- `POST /api/documents/{id}/draft` — JSON `{ "query": "...", "use_memory": true }`
+- `DELETE /api/documents/{id}` — remove document, chunks, drafts, on-disk upload folder, and Chroma vectors for that id (`204` on success).
+- `POST /api/documents/{id}/draft` — JSON `{ "query": "...", "use_memory": true }`; persists a **Draft** row and returns `draft_id`, content, evidence, `citation_issues`.
+- `GET /api/documents/{id}/drafts` — list saved drafts for a document (metadata: query, `created_at`, `has_operator_version`).
+- `GET /api/drafts/{draft_id}` — load a saved draft (content prefers operator text when present; evidence replayed from storage).
 - `POST /api/drafts/{draft_id}/operator` — JSON `{ "text": "..." }` saves operator text and mines edit pairs for future prompts.
 
-## Submission docs (stubs)
+## Submission docs
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md)
