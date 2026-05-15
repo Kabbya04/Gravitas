@@ -12,3 +12,5 @@ backend/data/
 backend/chroma_data/
 *.sqlite3
 .DS_Store
+.cursor/
+AI Engineer - Assessment.pdf
