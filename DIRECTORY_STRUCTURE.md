@@ -21,7 +21,11 @@ gravitas/
 │       ├── architecture.mmd
 │       ├── architecture.svg
 │       ├── rag-pipeline.mmd
-│       └── rag-pipeline.svg
+│       ├── rag-pipeline.svg
+│       ├── home-documents.png
+│       ├── document-workspace.png
+│       ├── saved-drafts.png
+│       └── drafting-evidence.png
 ├── samples/
 │   ├── README.md
 │   └── .gitkeep

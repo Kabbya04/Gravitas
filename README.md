@@ -20,12 +20,16 @@ See [plan.md](plan.md) for the assessment-aligned architecture and [DIRECTORY_ST
 
 ## Quick start
 
+Prerequisites: [Conda](https://docs.conda.io/) (or Miniconda/Miniforge), [Node.js](https://nodejs.org/) 18+, and a [Groq API key](https://console.groq.com/). Run the **backend** and **frontend** in separate terminals.
+
 ### Python environment (Conda)
 
 Use a Conda env named **`gravitas`** with **Python 3.11** (declared in [environment.yml](environment.yml)).
 
+**macOS / Linux** (bash or zsh, from repo root):
+
 ```bash
-# From repo root — creates env gravitas and pip-installs backend/requirements.txt
+# Creates env gravitas and pip-installs backend/requirements.txt
 conda env create -f environment.yml
 # If the env already exists and you changed dependencies:
 # conda env update -f environment.yml --prune
@@ -40,18 +44,47 @@ pip install -r requirements.txt   # safe to re-run; matches environment.yml pip 
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+**Windows** (Anaconda Prompt, PowerShell, or cmd, from repo root):
+
+```bat
+conda env create -f environment.yml
+REM If the env already exists: conda env update -f environment.yml --prune
+
+conda activate gravitas
+cd backend
+copy .env.example .env
+REM Set GROQ_API_KEY in .env (Notepad or your editor). Tune non-secret knobs in config.yaml.
+
+pip install -r requirements.txt
+
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+PowerShell equivalent for copying `.env`:
+
+```powershell
+Copy-Item .env.example .env
+```
+
 **Tests** (same env, from `backend/`):
 
 ```bash
 pytest
 ```
 
-System dependencies for OCR / PDF rasterization:
+(`pytest` works the same in Anaconda Prompt / PowerShell on Windows.)
 
-- macOS: `brew install tesseract poppler`
-- Ubuntu: `sudo apt-get install -y tesseract-ocr poppler-utils`
+#### System dependencies (OCR / PDF rasterization)
+
+| Platform | Install |
+|----------|---------|
+| **macOS** | `brew install tesseract poppler` |
+| **Linux (Debian/Ubuntu)** | `sudo apt-get install -y tesseract-ocr poppler-utils` |
+| **Windows** | Install **Tesseract** and **Poppler** and ensure both are on your `PATH`. Examples (run an elevated terminal if your package manager requires it): **Chocolatey:** `choco install tesseract poppler -y` · **Scoop:** `scoop install tesseract poppler` · **winget:** `winget install UB-Mannheim.TesseractOCR` (then install a Poppler Windows build, e.g. from [poppler-windows releases](https://github.com/oschwartz10612/poppler-windows/releases), and add its `bin` folder to `PATH`). Restart the terminal after installing. |
 
 ### Frontend
+
+**macOS / Linux / Windows** (from repo root):
 
 ```bash
 cd frontend
@@ -59,12 +92,26 @@ npm install
 npm run dev
 ```
 
-Vite proxies `/api` and `/health` to `http://127.0.0.1:8000` during development. Optional: set `VITE_API_URL` in `frontend/.env` (see `frontend/.env.example`).
+On Windows, use the same commands in PowerShell or cmd (`cd frontend` then `npm install` / `npm run dev`).
+
+Vite proxies `/api` and `/health` to `http://127.0.0.1:8000` during development. Optional: set `VITE_API_URL` in `frontend/.env` (see `frontend/.env.example`). Open **http://localhost:5173** once both servers are running.
 
 ### Web app (what you get in the UI)
 
+Open **http://localhost:5173** after starting the backend and frontend.
+
 - **Documents** — Upload files, see processing status, **open** a document, or **delete** it. Delete uses an in-app confirmation modal (not the browser `confirm` dialog).
+
+![Documents home — upload zone and document list](docs/diagrams/home-documents.png)
+
 - **Document workspace** — After **ready**: chunk table, **saved drafts** list (every **Generate** creates a server-side draft; **Open** reloads text + evidence), drafting query with optional **Use memory**, editable draft textarea, evidence column, **Save operator version**.
+
+![Document workspace — chunks, drafting controls, and evidence panel](docs/diagrams/document-workspace.png)
+
+![Saved drafts — list with Open and Reload](docs/diagrams/saved-drafts.png)
+
+![Drafting output with evidence tags and retrieved sources](docs/diagrams/drafting-evidence.png)
+
 - **Delete document** — Available from the list and from the document header; removes SQLite rows (cascading chunks and drafts), Chroma vectors for that id, and files under `backend/data/files/<id>/`.
 
 ## Configuration
