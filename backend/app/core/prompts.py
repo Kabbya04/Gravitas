@@ -20,6 +20,12 @@ class DraftingPrompts:
     repair_user: str
 
 
+@dataclass
+class OcrRefinePrompts:
+    system: str
+    user: str
+
+
 @lru_cache
 def _load_prompt_file(path: str) -> dict[str, Any]:
     p = Path(path)
@@ -29,15 +35,30 @@ def _load_prompt_file(path: str) -> dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
-def get_drafting_prompts() -> DraftingPrompts:
+def _prompt_path_from_config(key: str, default: str) -> Path:
     y = get_yaml_config()
-    rel = y.get("prompts", {}).get("drafting_file", "prompts/drafting.yaml")
-    raw = _load_prompt_file(str(BACKEND_DIR / rel) if not Path(rel).is_absolute() else rel)
+    rel = y.get("prompts", {}).get(key, default)
+    p = Path(rel)
+    if not p.is_absolute():
+        p = BACKEND_DIR / p
+    return p
+
+
+def get_drafting_prompts() -> DraftingPrompts:
+    raw = _load_prompt_file(str(_prompt_path_from_config("drafting_file", "prompts/drafting.yaml")))
     return DraftingPrompts(
         system=raw.get("system", "").strip(),
         user=raw.get("user", "").strip(),
         repair_system=raw.get("repair_system", "").strip(),
         repair_user=raw.get("repair_user", "").strip(),
+    )
+
+
+def get_ocr_refine_prompts() -> OcrRefinePrompts:
+    raw = _load_prompt_file(str(_prompt_path_from_config("ocr_refine_file", "prompts/ocr_refine.yaml")))
+    return OcrRefinePrompts(
+        system=raw.get("system", "").strip(),
+        user=raw.get("user", "").strip(),
     )
 
 

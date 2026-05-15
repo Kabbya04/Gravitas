@@ -14,7 +14,7 @@ Source (edit and regenerate SVG as needed): [diagrams/architecture.mmd](diagrams
 
 **Groq:** OpenAI-compatible client with `base_url=https://api.groq.com/openai/v1` and `GROQ_API_KEY` ([Groq overview](https://console.groq.com/docs/overview)); the browser never sees API keys. Model id defaults in `config.yaml` and can be overridden with `GROQ_MODEL` in `.env`.
 
-**Reading the diagram:** **POST upload** flows through ingestion into **SQLite** (canonical text and files), **Chroma** (dense vectors), and **BM25** corpus texts. **DELETE document** tears down the same stores for that id (plus cascaded SQL rows) without going through the ingest path. At draft time, **Hybrid** / **Pack** / **Groq** / **Parse** and the **Mine** → **Mem** loop feeding back into **Pack** behave as before.
+**Reading the diagram:** **POST upload** flows through ingestion into **SQLite** (canonical text and files), **Chroma** (dense vectors), and **BM25** corpus texts. On the **OCR path**, **Tesseract** output passes through **Groq OCR refine** before chunking; native PDF and MarkItDown skip that step. **DELETE document** tears down the same stores for that id (plus cascaded SQL rows) without going through the ingest path. At draft time, **Hybrid** / **Pack** / **Groq draft API** / **Parse** and the **Mine** → **Mem** loop feeding back into **Pack** behave as before.
 
 ## Major components
 
@@ -23,7 +23,7 @@ Source (edit and regenerate SVG as needed): [diagrams/architecture.mmd](diagrams
 | **API** | HTTP routes: multipart upload, document CRUD (including **delete**), chunk listing, draft create/list/get, operator-save. | [`backend/app/main.py`](../backend/app/main.py), [`backend/app/api/routers/`](../backend/app/api/routers/) |
 | **Core config** | `.env` secrets, `config.yaml` tunables, Jinja-rendered prompts from YAML files. | [`backend/app/core/`](../backend/app/core/), [`backend/config.yaml`](../backend/config.yaml), [`backend/prompts/drafting.yaml`](../backend/prompts/drafting.yaml) |
 | **Persistence** | SQLAlchemy models and SQLite session; files under `backend/data/`. | [`backend/app/db/`](../backend/app/db/) |
-| **Ingestion** | Format routing, PDF native vs OCR, optional MarkItDown, chunking with overlap; **`purge_document`** for full teardown on delete. | [`backend/app/ingestion/`](../backend/app/ingestion/) |
+| **Ingestion** | Format routing, PDF native vs OCR, optional **Groq OCR refine**, chunking with overlap; **`purge_document`** for full teardown on delete. | [`backend/app/ingestion/`](../backend/app/ingestion/) (`ocr_refine.py`, `extract.py`) |
 | **RAG** | Embeddings, Chroma client, BM25 over in-memory tokenized corpus, RRF fusion, evidence packing. | [`backend/app/rag/`](../backend/app/rag/) |
 | **LLM** | Groq via OpenAI-compatible client, JSON draft shape, citation validation and optional repair. | [`backend/app/llm/`](../backend/app/llm/) |
 | **Learning** | Diff-based correction snippets, embeddings for memory retrieval, prompt injection. | [`backend/app/learning/edits.py`](../backend/app/learning/edits.py) |
@@ -32,7 +32,7 @@ Source (edit and regenerate SVG as needed): [diagrams/architecture.mmd](diagrams
 ## End-to-end data flow (narrative)
 
 1. A document is **uploaded** and stored on disk; a row is created in SQLite with `pending` status.
-2. A **background task** runs ingestion: extract text (native PDF, **Tesseract** on low-text pages, or **MarkItDown** for office types), **chunk** with configurable size and overlap, then write **Chunk** rows.
+2. A **background task** runs ingestion: extract text (native PDF, **Tesseract** on low-text pages, or **MarkItDown** for office types); if OCR was used, **Groq** refines each page’s text before **chunking**; then write **Chunk** rows.
 3. Each chunk is **embedded** locally (**sentence-transformers** / PyTorch) and **upserted** into **Chroma** with metadata linking back to SQLite `chunk_id` and `document_id`.
 4. When the user requests a **draft**, the backend **embeds the query**, runs **dense retrieval** (Chroma) and **lexical retrieval** (BM25 rebuilt from chunks for that document), **fuses** rankings with **reciprocal rank fusion** (`backend/app/rag/fusion.py`), trims to a token budget, and labels passages **E1…En**.
 5. Optionally, **operator memory** (short text from past corrections similar to the current query) is prepended to the user prompt.
@@ -48,7 +48,9 @@ Source (edit and regenerate SVG as needed): [diagrams/architecture.mmd](diagrams
 
 | Phase | Step | What happens |
 |--------|------|----------------|
-| **Indexing** | Parse and chunk | Router picks native PDF text, OCR, or MarkItDown; output is overlapping chunks with page and `source` metadata. |
+| **Indexing** | Parse / extract | Router picks native PDF text, OCR (Tesseract), or MarkItDown; page-level text with `source` metadata. |
+| **Indexing** | OCR refine (optional) | When any page used OCR, **Groq** cleans typos and layout noise per page (`ocr_refine` in `config.yaml`); chunks then use `source=ocr_refined`. Skipped for native/MarkItDown paths. |
+| **Indexing** | Chunk | Overlapping chunks with page provenance and `ocr_confidence` when present. |
 | **Indexing** | Persist | Full chunk text written to **SQLite** (source of truth for UI and audits). |
 | **Indexing** | Embed | Local embedding model encodes each chunk vector (no Groq spend on indexing). |
 | **Indexing** | Vector store | Vectors upserted to **Chroma** with `chunk_id` / `document_id` metadata. |
@@ -69,7 +71,7 @@ The plan’s **13** RAG stages are drawn below as a **top-to-bottom** `flowchart
 
 ![RAG pipeline: stages 1 through 13](diagrams/rag-pipeline.svg)
 
-**Stages 1–7 (indexing):** load → parse/extract → chunk → persist SQLite → embed → Chroma upsert → BM25 token corpus from chunk texts. **Stages 8–13 (each draft request):** **8** query embedding; **9** hybrid dense + lexical retrieval scoped to the document; **10** RRF fusion; **11** context packing with **E** labels plus optional **operator memory**; **12** Groq generation; **13** citation validation and optional **repair**.
+**Stages 1–7 (indexing):** load → parse/extract → **2b Groq OCR refine** (OCR path only; native/MarkItDown bypass) → chunk → persist SQLite → embed → Chroma upsert → BM25 token corpus from chunk texts. **Stages 8–13 (each draft request):** **8** query embedding; **9** hybrid dense + lexical retrieval scoped to the document; **10** RRF fusion; **11** context packing with **E** labels plus optional **operator memory**; **12** Groq generation; **13** citation validation and optional **repair**.
 
 ## Design choices (short)
 

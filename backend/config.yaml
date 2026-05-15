@@ -24,6 +24,13 @@ chunking:
   overlap_chars: 150
   ocr_text_threshold: 40
 
+# Post-OCR Groq cleanup (runs after Tesseract, before chunking). Requires GROQ_API_KEY.
+ocr_refine:
+  enabled: true
+  temperature: 0.5
+  max_tokens: 4096
+  max_chars_per_page: 14000
+
 retrieval:
   dense_top_k: 12
   bm25_top_k: 12
@@ -37,3 +44,4 @@ learning:
 
 prompts:
   drafting_file: prompts/drafting.yaml
+  ocr_refine_file: prompts/ocr_refine.yaml

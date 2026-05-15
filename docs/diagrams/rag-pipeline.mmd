@@ -4,12 +4,17 @@ flowchart TB
     direction TB
     S1[1 Load]
     S2[2 Parse and extract]
+    S2r[2b Groq OCR refine]
     S3[3 Chunk]
     S4[4 Persist SQLite]
     S5[5 Embed chunks]
     S6[6 Chroma upsert]
     S7[7 BM25 token corpus]
-    S1 --> S2 --> S3 --> S4
+    S1 --> S2
+    S2 --> S2r
+    S2r --> S3
+    S2 -. native or MarkItDown .-> S3
+    S3 --> S4
     S3 --> S5 --> S6
     S4 --> S7
   end

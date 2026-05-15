@@ -12,6 +12,7 @@ from app.core.yaml_config import chroma_dir, data_dir, get_yaml_config
 from app.db.models import Chunk, Document
 from app.ingestion.chunking import chunk_pages
 from app.ingestion.extract import extract_document
+from app.ingestion.ocr_refine import refine_ocr_pages
 from app.rag.chroma_store import ChromaIndex
 from app.rag.embedder import get_embedder
 
@@ -58,6 +59,7 @@ def process_document(db: Session, document_id: str) -> Document:
             doc.content_type,
             float(y.get("chunking", {}).get("ocr_text_threshold", 40)),
         )
+        pages = refine_ocr_pages(pages, y)
         max_chars = int(y.get("chunking", {}).get("max_chars", 1200))
         overlap = int(y.get("chunking", {}).get("overlap_chars", 150))
         raw_chunks = chunk_pages(pages, max_chars=max_chars, overlap=overlap)

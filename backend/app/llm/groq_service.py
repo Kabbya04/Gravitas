@@ -3,11 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from openai import OpenAI
-
 from app.core.prompts import get_drafting_prompts, render_template
-from app.core.settings import get_settings
 from app.core.yaml_config import get_yaml_config
+from app.llm.groq_client import get_groq_runtime
 from app.llm.citations import draft_json_to_markdown, extract_json_object, validate_citations_in_draft
 from app.rag.retrieval import EvidenceItem
 
@@ -15,15 +13,11 @@ from app.rag.retrieval import EvidenceItem
 class GroqDraftService:
     def __init__(self) -> None:
         self.yaml = get_yaml_config()
-        self.settings = get_settings()
-        g = self.yaml.get("groq", {})
-        api_key = self.settings.groq_api_key
-        if not api_key:
-            raise RuntimeError("GROQ_API_KEY is not set")
-        self.client = OpenAI(api_key=api_key, base_url=str(g.get("base_url")))
-        self.model = self.settings.groq_model or str(g.get("model"))
-        self.temperature = float(g.get("temperature", 0.2))
-        self.max_tokens = int(g.get("max_tokens", 4096))
+        rt = get_groq_runtime()
+        self.client = rt.client
+        self.model = rt.model
+        self.temperature = rt.temperature
+        self.max_tokens = rt.max_tokens
 
     def _evidence_block(self, items: list[EvidenceItem]) -> str:
         lines: list[str] = []

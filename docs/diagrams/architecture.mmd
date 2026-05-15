@@ -8,6 +8,7 @@ flowchart LR
     Router[Format router]
     Native[Native PDF text]
     OCR[Tesseract OCR]
+    OcrRefine[Groq OCR refine]
     MD[MarkItDown optional]
     Chunk[Chunk plus structure]
   end
@@ -21,7 +22,7 @@ flowchart LR
     Pack[Evidence packaging]
   end
   subgraph gen [Generation]
-    Groq[Groq API]
+    Groq[Groq draft API]
     Parse[Citation parse validate]
   end
   subgraph learn [Edit loop]
@@ -34,7 +35,8 @@ flowchart LR
   Router --> OCR
   Router --> MD
   Native --> Chunk
-  OCR --> Chunk
+  OCR --> OcrRefine
+  OcrRefine --> Chunk
   MD --> Chunk
   Chunk --> DB
   Chunk --> Vec

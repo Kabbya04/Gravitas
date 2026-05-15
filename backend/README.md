@@ -60,5 +60,5 @@ Routers live under `app/api/routers/`. See the root [README.md](../README.md) fo
 - `app/rag/` — embedder, Chroma, BM25, hybrid retrieval
 - `app/llm/` — Groq client, citation helpers
 - `app/learning/` — operator edit capture + memory block
-- `config.yaml` — non-secret tunables
-- `prompts/` — prompt templates (YAML + Jinja2)
+- `config.yaml` — non-secret tunables (`ocr_refine` enables Groq cleanup after Tesseract, before chunking)
+- `prompts/` — prompt templates (YAML + Jinja2): `drafting.yaml`, `ocr_refine.yaml`
