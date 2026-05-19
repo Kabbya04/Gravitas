@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { DraftMarkdown } from "@/components/DraftMarkdown";
+import {
+  DraftViewToggle,
+  type DraftViewMode,
+} from "@/components/DraftViewToggle";
 import {
   citationsUsedFromResponse,
   createDraft,
@@ -99,6 +104,7 @@ export function DocumentDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const [draftBody, setDraftBody] = useState("");
+  const [draftViewMode, setDraftViewMode] = useState<DraftViewMode>("preview");
 
   const citationLines = useMemo(
     () => (draftRes ? citationsUsedFromResponse(draftRes) : []),
@@ -111,6 +117,7 @@ export function DocumentDetailPage() {
       return;
     }
     setDraftBody(draftTextFromResponse(draftRes));
+    setDraftViewMode("preview");
   }, [
     draftRes?.draft_id,
     draftRes?.content,
@@ -539,27 +546,63 @@ export function DocumentDetailPage() {
           )}
 
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Draft
-            </h3>
-            <p className="mt-1 text-xs text-zinc-500">
-              Edit freely. Keep markers like{" "}
-              <span className="font-mono text-zinc-700">[E1]</span> so the
-              evidence panel stays aligned with your text.
-            </p>
-            <textarea
-              value={draftBody}
-              onChange={(e) => setDraftBody(e.target.value)}
-              readOnly={!draftRes}
-              spellCheck
-              rows={16}
-              placeholder={
-                draftRes
-                  ? ""
-                  : "Generate a draft or open a saved one from the list above."
-              }
-              className="mt-2 min-h-[12rem] w-full resize-y rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 font-sans text-sm leading-relaxed text-zinc-800 outline-none ring-zinc-900/10 transition read-only:cursor-not-allowed read-only:opacity-70 focus:border-zinc-400 focus:bg-white focus:ring-2"
-            />
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Draft
+                </h3>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {draftViewMode === "preview" ? (
+                    <>
+                      Rendered view for reading. Switch to{" "}
+                      <span className="font-medium text-zinc-700">
+                        Edit markdown
+                      </span>{" "}
+                      to change text.
+                    </>
+                  ) : (
+                    <>
+                      Edit freely. Keep markers like{" "}
+                      <span className="font-mono text-zinc-700">[E1]</span> so the
+                      evidence panel stays aligned with your text.
+                    </>
+                  )}
+                </p>
+              </div>
+              <DraftViewToggle
+                mode={draftViewMode}
+                disabled={!draftRes}
+                onChange={setDraftViewMode}
+              />
+            </div>
+            {draftViewMode === "preview" ? (
+              <div
+                className="mt-2 min-h-[12rem] w-full overflow-y-auto rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 read-only:opacity-70"
+                aria-label="Draft preview"
+              >
+                {draftRes ? (
+                  <DraftMarkdown markdown={draftBody} />
+                ) : (
+                  <p className="text-sm text-zinc-500">
+                    Generate a draft or open a saved one from the list above.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <textarea
+                value={draftBody}
+                onChange={(e) => setDraftBody(e.target.value)}
+                readOnly={!draftRes}
+                spellCheck
+                rows={16}
+                placeholder={
+                  draftRes
+                    ? ""
+                    : "Generate a draft or open a saved one from the list above."
+                }
+                className="mt-2 min-h-[12rem] w-full resize-y rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 font-mono text-sm leading-relaxed text-zinc-800 outline-none ring-zinc-900/10 transition read-only:cursor-not-allowed read-only:opacity-70 focus:border-zinc-400 focus:bg-white focus:ring-2"
+              />
+            )}
           </div>
 
           {draftRes && citationLines.length > 0 && (
